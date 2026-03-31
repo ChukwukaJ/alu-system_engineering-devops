@@ -1,28 +1,17 @@
 #!/usr/bin/env bash
-# Installs HAProxy and configures it to balance traffic between two backend servers
-# using round-robin. Enables management via the init script.
+# Installs HAProxy version 1.8 with the following configurations:
+#+    Enables management via the init script.
+#+    Distributes requests using a round-robin algorithm.
 
-# Define backend server hostnames and IPs
-WEB1_NAME="web-01"
-WEB1_IP="44.202.118.163"
-WEB2_NAME="web-02"
-WEB2_IP="54.236.227.215"
-
-# Install HAProxy 1.8
-apt-get update
 apt-get install -y software-properties-common
 add-apt-repository -y ppa:vbernat/haproxy-1.8
 apt-get update
 apt-get install -y haproxy=1.8.*
 
-# Enable HAProxy on system startup
-echo "ENABLED=1" > /etc/default/haproxy
-
-# Backup original config
-mv /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.original 2>/dev/null || true
+echo "ENABLED=1" >> /etc/default/haproxy
+mv /etc/haproxy/haproxy.cfg{,.original}
 touch /etc/haproxy/haproxy.cfg
 
-# Write new HAProxy config using variables
 printf %s "global
     log 127.0.0.1 local0 notice
     maxconn 2000
@@ -36,27 +25,20 @@ defaults
     option  dontlognull
     retries 3
     option redispatch
-    timeout connect 5000
+    timeout connect  5000
     timeout client  10000
     timeout server  10000
 
-frontend http_front
-    bind *:80
-    default_backend http_back
-
-backend http_back
-    balance roundrobin
-    option http-server-close
-    option forwardfor
-    server ${WEB1_NAME} ${WEB1_IP}:80 check
-    server ${WEB2_NAME} ${WEB2_IP}:80 check
-
-listen stats
-    bind *:8404
+listen hbnb
+    bind 0.0.0.0:80
+    mode http
     stats enable
     stats uri /haproxy?stats
-    stats refresh 10s
-" > /etc/haproxy/haproxy.cfg
+    balance roundrobin
+    option httpclose
+    option forwardfor
+    server 5777-web-01 44.202.118.163:80 check
+    server 5777-web-02 54.236.227.215:80 check
+" >> /etc/haproxy/haproxy.cfg
 
-# Restart HAProxy to apply changes
-service haproxy restart
+service haproxy start
