@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# Installs HAProxy and configures it to balance traffic between web-01 and web-02
+# Installs HAProxy and configures it to balance traffic between two backend servers
 # using round-robin. Enables management via the init script.
+
+# Define backend server hostnames and IPs
+WEB1_NAME="web-01"
+WEB1_IP="44.202.118.163"
+WEB2_NAME="web-02"
+WEB2_IP="54.236.227.215"
 
 # Install HAProxy 1.8
 apt-get update
@@ -16,7 +22,7 @@ echo "ENABLED=1" > /etc/default/haproxy
 mv /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.original 2>/dev/null || true
 touch /etc/haproxy/haproxy.cfg
 
-# Write new HAProxy config with correct IPs
+# Write new HAProxy config using variables
 printf %s "global
     log 127.0.0.1 local0 notice
     maxconn 2000
@@ -42,8 +48,8 @@ backend http_back
     balance roundrobin
     option http-server-close
     option forwardfor
-    server web-01 44.202.118.163:80 check
-    server web-02 54.236.227.215:80 check
+    server ${WEB1_NAME} ${WEB1_IP}:80 check
+    server ${WEB2_NAME} ${WEB2_IP}:80 check
 
 listen stats
     bind *:8404
